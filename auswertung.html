@@ -8,23 +8,32 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <style>
     :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f3f6fb;font-synthesis:none}
-    *{box-sizing:border-box}body{margin:0;padding:28px 15px 48px}main{max-width:1050px;margin:auto}
+    *{box-sizing:border-box}body{margin:0;padding:28px 15px 48px}main{max-width:1240px;margin:auto}
     .top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:22px;flex-wrap:wrap}
     .eyebrow{margin:0 0 5px;color:#63718a;font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
     h1{margin:0;font-size:clamp(1.7rem,4vw,2.3rem);letter-spacing:-.04em}.muted{color:#66758d}
     .panel{background:#fff;border:1px solid #e2e8f0;border-radius:17px;padding:21px;box-shadow:0 8px 26px rgba(23,32,51,.045);margin-bottom:18px}
     .login{max-width:440px;margin:7vh auto}.field{display:grid;gap:7px;margin:14px 0}label{font-weight:650;font-size:.92rem}
-    input{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:12px 13px;font:inherit;background:white;color:#172033}
+    input[type=email],input[type=password]{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:12px 13px;font:inherit;background:white;color:#172033}
     input:focus{outline:3px solid rgba(47,111,235,.15);border-color:#2f6feb}
     button{border:0;border-radius:10px;padding:11px 15px;background:#245edb;color:white;font:inherit;font-weight:700;cursor:pointer}
     button.secondary{background:#eaf0f8;color:#263751}button:disabled{opacity:.6;cursor:wait}
-    #status{min-height:1.4em;line-height:1.4;margin:12px 0 0;font-size:.91rem}#status.error{color:#b42318}#status.success{color:#087443}
+    #login-status,#dashboard-status{min-height:1.4em;line-height:1.4;margin:12px 0 0;font-size:.91rem}#login-status.error,#dashboard-status.error{color:#b42318}#login-status.success,#dashboard-status.success{color:#087443}
     .hidden{display:none!important}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}
     .metric{background:#fff;border:1px solid #e2e8f0;border-radius:15px;padding:17px}.metric .name{font-size:.86rem;color:#65748b}.metric strong{display:block;font-size:1.9rem;line-height:1.2;margin-top:6px;font-variant-numeric:tabular-nums}
-    .section-title{margin:0 0 5px;font-size:1.15rem}.section-sub{margin:0 0 16px;color:#68778d;font-size:.9rem}
-    .chart-wrap{position:relative;height:330px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:.9rem;white-space:nowrap}th,td{text-align:right;padding:10px 11px;border-bottom:1px solid #e9eef5;font-variant-numeric:tabular-nums}th:first-child,td:first-child{text-align:left}th{color:#53627a;font-weight:700;background:#f8fafd}
+    .section-title{margin:0 0 5px;font-size:1.15rem}.section-sub{margin:0 0 16px;color:#68778d;font-size:.9rem;line-height:1.5}
+    .chart-wrap{position:relative;height:390px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:.88rem;white-space:nowrap}
+    th,td{text-align:right;padding:10px 11px;border-bottom:1px solid #e9eef5;font-variant-numeric:tabular-nums}th:first-child,td:first-child{text-align:left}th{color:#53627a;font-weight:700;background:#f8fafd}
     .actions{display:flex;gap:9px;flex-wrap:wrap}.small{font-size:.82rem}.tag{display:inline-block;background:#edf4ff;color:#2452a6;padding:4px 8px;border-radius:999px;font-size:.78rem;font-weight:700}
-    @media(max-width:700px){.cards{grid-template-columns:1fr}.panel{padding:16px}.chart-wrap{height:280px}}
+    .selection-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .selection-actions{display:flex;gap:8px;flex-wrap:wrap}.selection-actions button{font-size:.83rem;padding:8px 11px}
+    .record-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:9px;max-height:330px;overflow:auto;padding:2px}
+    .record-option{display:flex;align-items:flex-start;gap:9px;padding:11px 12px;border:1px solid #dce4ef;border-radius:11px;background:#fbfcfe;cursor:pointer;font-weight:600;min-width:0}
+    .record-option input{width:17px;height:17px;margin:2px 0 0;accent-color:#245edb;flex:0 0 auto}
+    .record-option span{min-width:0;overflow-wrap:anywhere;line-height:1.35}.record-option small{display:block;color:#68778d;font-weight:450;margin-top:3px}
+    .empty{color:#68778d;font-size:.9rem;padding:12px 0}
+    .note{background:#f4f7fc;border-radius:11px;padding:12px 14px;color:#53627a;font-size:.85rem;line-height:1.5;margin-top:14px}
+    @media(max-width:700px){.cards{grid-template-columns:1fr}.panel{padding:16px}.chart-wrap{height:330px}.record-list{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -43,29 +52,53 @@
 
   <section id="dashboard" class="hidden">
     <header class="top">
-      <div><p class="eyebrow">Statistische Auswertung</p><h1>Würfel-Experiment</h1><span class="tag">Alle eingegangenen Messreihen</span></div>
+      <div><p class="eyebrow">Statistische Auswertung</p><h1>Würfel-Experiment</h1><span class="tag">Messreihen einzeln auswählen</span></div>
       <div class="actions"><button id="refresh-button" class="secondary">Aktualisieren</button><button id="csv-button" class="secondary">CSV exportieren</button><button id="logout-button" class="secondary">Abmelden</button></div>
     </header>
     <p id="dashboard-status" class="muted small" role="status">Daten werden geladen …</p>
+
+    <section class="panel">
+      <h2 class="section-title">Messreihen ein- und ausblenden</h2>
+      <p class="section-sub">Jeder Datensatz ist eine eigene Messreihe. Wähle eine oder mehrere Messreihen aus. Die Balken zeigen jeweils deren relative Häufigkeiten; die violette Linie zeigt die kumulierte Verteilung aller ausgewählten Würfe.</p>
+      <div class="selection-toolbar">
+        <span id="selection-info" class="muted small">Messreihen werden geladen …</span>
+        <div class="selection-actions">
+          <button id="select-all-button" class="secondary" type="button">Alle auswählen</button>
+          <button id="select-none-button" class="secondary" type="button">Keine auswählen</button>
+        </div>
+      </div>
+      <div id="record-list" class="record-list"><p class="empty">Noch keine Messreihen vorhanden.</p></div>
+      <div class="note">Die kumulierte relative Häufigkeit wird korrekt gewichtet berechnet: Wir addieren zuerst die absoluten Häufigkeiten aller ausgewählten Messreihen und teilen dann durch die Gesamtzahl aller Würfe. Es wird nicht der Mittelwert einzelner Prozentwerte gebildet. Der Eingangszeitpunkt dient zur Identifikation jeder Messreihe.</div>
+    </section>
+
     <section class="cards">
-      <article class="metric"><span class="name">Eingegangene Messreihen</span><strong id="record-count">–</strong></article>
-      <article class="metric"><span class="name">Würfe insgesamt</span><strong id="roll-count">–</strong></article>
+      <article class="metric"><span class="name">Ausgewählte Messreihen</span><strong id="record-count">–</strong></article>
+      <article class="metric"><span class="name">Würfe in der Auswahl</span><strong id="roll-count">–</strong></article>
       <article class="metric"><span class="name">Theoretische Häufigkeit je Augenzahl</span><strong>16,67 %</strong></article>
     </section>
+
     <section class="panel">
-      <h2 class="section-title">Relative Häufigkeiten</h2>
-      <p class="section-sub">Gesamtzahl jeder Augenzahl geteilt durch alle erfassten Würfe. Die Linie zeigt den theoretischen Wert eines fairen Würfels.</p>
-      <div class="chart-wrap"><canvas id="frequency-chart" aria-label="Diagramm der relativen Häufigkeiten" role="img"></canvas></div>
+      <h2 class="section-title">Relative Häufigkeiten der ausgewählten Messreihen</h2>
+      <p id="chart-subtitle" class="section-sub">Jede Balkenfarbe steht für eine einzelne Messreihe. Die Linien zeigen die kumulierte Auswahl und den theoretischen Wert.</p>
+      <div class="chart-wrap"><canvas id="frequency-chart" aria-label="Vergleich der relativen Häufigkeiten einzelner Messreihen" role="img"></canvas></div>
     </section>
+
     <section class="panel">
-      <h2 class="section-title">Zusammenfassung</h2>
-      <p class="section-sub">Die Häufigkeiten werden über alle Messreihen addiert (gewichtete Gesamtauswertung).</p>
+      <h2 class="section-title">Kumulierte Auswertung der Auswahl</h2>
+      <p class="section-sub">Die absoluten Häufigkeiten aller ausgewählten Messreihen werden addiert. Die relativen Häufigkeiten beziehen sich auf alle Würfe dieser Auswahl.</p>
       <div class="table-wrap"><table><thead><tr><th>Augenzahl</th><th>Absolute Häufigkeit</th><th>Relative Häufigkeit</th></tr></thead><tbody id="summary-body"></tbody></table></div>
     </section>
+
     <section class="panel">
-      <h2 class="section-title">Letzte Messreihen</h2>
-      <p class="section-sub">Die neuesten 15 Datensätze. Vollständige Daten können über CSV exportiert werden.</p>
-      <div class="table-wrap"><table><thead><tr><th>Zeitpunkt</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>Würfe</th></tr></thead><tbody id="records-body"></tbody></table></div>
+      <h2 class="section-title">Ausgewählte Messreihen im Detail</h2>
+      <p class="section-sub">Jede Zeile entspricht einem Datensatz. Messreihen, die nicht ausgewählt sind, erscheinen hier nicht.</p>
+      <div class="table-wrap"><table><thead><tr><th>Eingangszeit</th><th>Kennung</th><th>Würfe</th><th>h(1)</th><th>h(2)</th><th>h(3)</th><th>h(4)</th><th>h(5)</th><th>h(6)</th></tr></thead><tbody id="selected-rows-body"></tbody></table></div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title">Neueste Messreihen</h2>
+      <p class="section-sub">Die neuesten 15 eingegangenen Datensätze. Der CSV-Export enthält alle geladenen Messreihen.</p>
+      <div class="table-wrap"><table><thead><tr><th>Eingangszeit</th><th>Kennung</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>Würfe</th></tr></thead><tbody id="recent-rows-body"></tbody></table></div>
     </section>
   </section>
 </main>
@@ -73,12 +106,13 @@
 <script type="module">
   import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-  // Dieselben öffentlichen Projektangaben wie in wuerfel-eingabe.html eintragen.
-  const SUPABASE_URL = 'https://nzujsgiwllnbqameygxz.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Cep0GIwZnrJLNshnZzMwdA_lNtErFte';
+  // Dieselben öffentlichen Projektangaben wie in deiner Schüler-Eingabeseite eintragen.
+  const SUPABASE_URL = 'https://DEIN-PROJEKT.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_DEIN_PUBLIC_KEY';
   const TABLE = 'wuerfel_messreihen';
   const FIELDS = ['anzahl_1','anzahl_2','anzahl_3','anzahl_4','anzahl_5','anzahl_6'];
   const PAGE_SIZE = 1000;
+  const COLORS = ['#2563eb','#0f9d78','#db8b25','#8b5cf6','#d14b72','#0891b2','#718096','#a3a300','#b45309','#0e7490','#be123c','#4d7c0f'];
 
   const $ = (id) => document.getElementById(id);
   const loginPanel = $('login-panel');
@@ -88,11 +122,13 @@
   let supabase = null;
   let chart = null;
   let allRows = [];
+  let selectedIds = null;
+  let knownIds = new Set();
 
   const configured = !SUPABASE_URL.includes('DEIN-PROJEKT') && !SUPABASE_PUBLISHABLE_KEY.includes('DEIN_PUBLIC_KEY');
   if (configured) {
     supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: false }
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
   } else {
     loginStatus.textContent = 'Bitte zuerst Projekt-URL und Publishable Key im HTML-Code eintragen.';
@@ -102,8 +138,17 @@
 
   function setStatus(element, text, kind='') { element.textContent = text; element.className = kind; }
   function formatNumber(n) { return Number(n).toLocaleString('de-DE'); }
-  function formatPercent(n) { return `${(n * 100).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})} %`; }
+  function formatPercent(value) { return `${(value * 100).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})} %`; }
   function safeCsv(value) { return `"${String(value ?? '').replaceAll('"','""')}"`; }
+  function totalForRow(row) { return Number(row.gesamtzahl ?? FIELDS.reduce((sum,field) => sum + Number(row[field] || 0),0)); }
+  function timestampLabel(row) {
+    const date = new Date(row.created_at);
+    return Number.isNaN(date.getTime()) ? 'Zeitpunkt unbekannt' : date.toLocaleString('de-DE');
+  }
+  function rowLabel(row) {
+    const shortId = String(row.id).slice(0, 6);
+    return `${timestampLabel(row)} · ${formatNumber(totalForRow(row))} Würfe · #${shortId}`;
+  }
 
   async function loadAllRows() {
     const result = [];
@@ -113,6 +158,7 @@
         .from(TABLE)
         .select('id,created_at,anzahl_1,anzahl_2,anzahl_3,anzahl_4,anzahl_5,anzahl_6,gesamtzahl')
         .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .range(from, to);
       if (error) throw error;
       result.push(...(data || []));
@@ -121,60 +167,187 @@
     return result;
   }
 
+  function aggregate(rows) {
+    const faceTotals = FIELDS.map(field => rows.reduce((sum,row) => sum + Number(row[field] || 0), 0));
+    return { rowCount: rows.length, faceTotals, totalRolls: faceTotals.reduce((sum,value) => sum + value, 0) };
+  }
+
+  function makeCell(row, value, tag='td') {
+    const cell = document.createElement(tag);
+    cell.textContent = value;
+    row.appendChild(cell);
+    return cell;
+  }
+
+  function renderRecordControls() {
+    const container = $('record-list');
+    container.replaceChildren();
+    const currentIds = new Set(allRows.map(row => row.id));
+
+    if (selectedIds === null) {
+      selectedIds = new Set(currentIds);
+    } else {
+      // Neue Datensätze werden nach dem Aktualisieren automatisch mit ausgewählt.
+      for (const id of currentIds) if (!knownIds.has(id)) selectedIds.add(id);
+      for (const id of [...selectedIds]) if (!currentIds.has(id)) selectedIds.delete(id);
+    }
+    knownIds = currentIds;
+
+    if (allRows.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'empty';
+      empty.textContent = 'Noch keine Messreihen vorhanden.';
+      container.appendChild(empty);
+      $('selection-info').textContent = 'Keine Messreihen vorhanden';
+      return;
+    }
+
+    for (const row of allRows) {
+      const label = document.createElement('label');
+      label.className = 'record-option';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = selectedIds.has(row.id);
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) selectedIds.add(row.id);
+        else selectedIds.delete(row.id);
+        renderAnalysis();
+      });
+      const text = document.createElement('span');
+      text.textContent = rowLabel(row);
+      text.title = `Datensatz-ID: ${row.id}`;
+      label.append(checkbox, text);
+      container.appendChild(label);
+    }
+    updateSelectionInfo();
+  }
+
+  function updateSelectionInfo() {
+    const selectedCount = allRows.filter(row => selectedIds?.has(row.id)).length;
+    $('selection-info').textContent = `${formatNumber(selectedCount)} von ${formatNumber(allRows.length)} Messreihen ausgewählt`;
+  }
+
+  function renderSummary(stats) {
+    const body = $('summary-body');
+    body.replaceChildren();
+    stats.faceTotals.forEach((count,index) => {
+      const row = document.createElement('tr');
+      makeCell(row, String(index + 1));
+      makeCell(row, formatNumber(count));
+      makeCell(row, stats.totalRolls ? formatPercent(count / stats.totalRolls) : '–');
+      body.appendChild(row);
+    });
+  }
+
+  function renderSelectedRows(rows) {
+    const body = $('selected-rows-body');
+    body.replaceChildren();
+    for (const row of rows) {
+      const tr = document.createElement('tr');
+      makeCell(tr, timestampLabel(row));
+      makeCell(tr, `#${String(row.id).slice(0,6)}`);
+      makeCell(tr, formatNumber(totalForRow(row)));
+      const n = totalForRow(row);
+      FIELDS.forEach(field => makeCell(tr, n ? formatPercent(Number(row[field] || 0) / n) : '–'));
+      body.appendChild(tr);
+    }
+    if (rows.length === 0) {
+      const tr = document.createElement('tr');
+      const td = makeCell(tr, 'Bitte wähle mindestens eine Messreihe aus.');
+      td.colSpan = 9;
+      body.appendChild(tr);
+    }
+  }
+
+  function renderRecentRows() {
+    const body = $('recent-rows-body');
+    body.replaceChildren();
+    allRows.slice(0,15).forEach(row => {
+      const tr = document.createElement('tr');
+      makeCell(tr, timestampLabel(row));
+      makeCell(tr, `#${String(row.id).slice(0,6)}`);
+      FIELDS.forEach(field => makeCell(tr, formatNumber(row[field])));
+      makeCell(tr, formatNumber(totalForRow(row)));
+      body.appendChild(tr);
+    });
+    if (allRows.length === 0) {
+      const tr = document.createElement('tr');
+      const td = makeCell(tr, 'Noch keine Messreihen vorhanden.');
+      td.colSpan = 9;
+      body.appendChild(tr);
+    }
+  }
+
+  function renderChart(rows, pooledStats) {
+    if (chart) chart.destroy();
+    const datasets = rows.map((row,index) => {
+      const total = totalForRow(row);
+      return {
+        label: rowLabel(row),
+        data: FIELDS.map(field => total ? Number(row[field] || 0) / total * 100 : 0),
+        backgroundColor: COLORS[index % COLORS.length],
+        borderRadius: 5,
+        borderSkipped: false
+      };
+    });
+
+    if (pooledStats.totalRolls > 0) {
+      datasets.push({
+        type: 'line',
+        label: 'Ausgewählte Messreihen zusammen (gewichtet)',
+        data: pooledStats.faceTotals.map(count => count / pooledStats.totalRolls * 100),
+        borderColor: '#7c3aed', backgroundColor: '#7c3aed', borderWidth: 3,
+        pointRadius: 4, pointHoverRadius: 6, tension: 0.15
+      });
+    }
+    datasets.push({
+      type: 'line', label: 'Theoretisch (fairer Würfel)',
+      data: [100/6,100/6,100/6,100/6,100/6,100/6],
+      borderColor: '#e28a36', backgroundColor: '#e28a36', borderDash: [6,5],
+      pointRadius: 0, borderWidth: 2
+    });
+
+    if (typeof Chart === 'undefined') {
+      setStatus(dashStatus, 'Die Daten sind geladen; das Diagramm konnte nicht geladen werden. Prüfe die Internetverbindung.', 'error');
+      return;
+    }
+    chart = new Chart($('frequency-chart'), {
+      type: 'bar',
+      data: { labels: ['1','2','3','4','5','6'], datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: 'Relative Häufigkeit (%)' }, ticks: { callback: value => `${value} %` } },
+          x: { title: { display: true, text: 'Augenzahl' } }
+        },
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { callbacks: { label: context => `${context.dataset.label}: ${context.parsed.y.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})} %` } }
+        }
+      }
+    });
+  }
+
+  function renderAnalysis() {
+    const selectedRows = allRows.filter(row => selectedIds?.has(row.id));
+    const pooledStats = aggregate(selectedRows);
+    $('record-count').textContent = formatNumber(pooledStats.rowCount);
+    $('roll-count').textContent = formatNumber(pooledStats.totalRolls);
+    $('chart-subtitle').textContent = selectedRows.length
+      ? `${formatNumber(selectedRows.length)} einzelne Messreihe(n) im Vergleich; violette Linie = gewichtete gemeinsame Verteilung.`
+      : 'Bitte wähle mindestens eine Messreihe aus.';
+    renderSummary(pooledStats);
+    renderSelectedRows(selectedRows);
+    updateSelectionInfo();
+    renderChart(selectedRows, pooledStats);
+  }
+
   function render(rows) {
     allRows = rows;
-    const faceTotals = FIELDS.map(field => rows.reduce((sum, row) => sum + Number(row[field] || 0), 0));
-    const totalRolls = faceTotals.reduce((sum, value) => sum + value, 0);
-    $('record-count').textContent = formatNumber(rows.length);
-    $('roll-count').textContent = formatNumber(totalRolls);
-
-    const summaryBody = $('summary-body');
-    summaryBody.replaceChildren();
-    faceTotals.forEach((count, index) => {
-      const tr = document.createElement('tr');
-      const values = [String(index + 1), formatNumber(count), totalRolls ? formatPercent(count / totalRolls) : '–'];
-      values.forEach(value => { const td = document.createElement('td'); td.textContent = value; tr.appendChild(td); });
-      summaryBody.appendChild(tr);
-    });
-
-    const recordsBody = $('records-body');
-    recordsBody.replaceChildren();
-    rows.slice(0, 15).forEach(row => {
-      const tr = document.createElement('tr');
-      const date = new Date(row.created_at).toLocaleString('de-DE');
-      [date, ...FIELDS.map(field => formatNumber(row[field])), formatNumber(row.gesamtzahl)].forEach(value => {
-        const td = document.createElement('td'); td.textContent = value; tr.appendChild(td);
-      });
-      recordsBody.appendChild(tr);
-    });
-    if (rows.length === 0) {
-      const tr = document.createElement('tr'); const td = document.createElement('td');
-      td.colSpan = 8; td.textContent = 'Noch keine Messreihen vorhanden.'; tr.appendChild(td); recordsBody.appendChild(tr);
-    }
-
-    const observed = faceTotals.map(count => totalRolls ? count / totalRolls * 100 : 0);
-    if (chart) chart.destroy();
-    const canvas = $('frequency-chart');
-    if (typeof Chart !== 'undefined') {
-      chart = new Chart(canvas, {
-        type: 'bar',
-        data: {
-          labels: ['1','2','3','4','5','6'],
-          datasets: [
-            { label: 'Beobachtete relative Häufigkeit', data: observed, backgroundColor: '#3b82f6', borderRadius: 7 },
-            { label: 'Theoretischer Wert (fairer Würfel)', data: [100/6,100/6,100/6,100/6,100/6,100/6], type: 'line', borderColor: '#e28a36', backgroundColor: '#e28a36', pointRadius: 3, borderWidth: 2 }
-          ]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
-          scales: { y: { beginAtZero: true, title: { display: true, text: 'Relative Häufigkeit (%)' }, ticks: { callback: value => `${value} %` } }, x: { title: { display: true, text: 'Augenzahl' } } },
-          plugins: { tooltip: { callbacks: { label: context => `${context.dataset.label}: ${context.parsed.y.toLocaleString('de-DE',{maximumFractionDigits:2})} %` } } }
-        }
-      });
-    } else {
-      setStatus(dashStatus, 'Die Daten sind geladen; das Diagramm konnte nicht geladen werden. Prüfe die Internetverbindung.', 'error');
-    }
+    renderRecordControls();
+    renderRecentRows();
+    renderAnalysis();
   }
 
   async function refreshDashboard() {
@@ -183,10 +356,10 @@
     try {
       const rows = await loadAllRows();
       render(rows);
-      setStatus(dashStatus, `Zuletzt aktualisiert: ${new Date().toLocaleTimeString('de-DE')}`,'success');
+      setStatus(dashStatus, `Zuletzt aktualisiert: ${new Date().toLocaleTimeString('de-DE')}`, 'success');
     } catch (error) {
       console.error(error);
-      setStatus(dashStatus, `Daten konnten nicht geladen werden: ${error.message || 'Unbekannter Fehler'}`,'error');
+      setStatus(dashStatus, `Daten konnten nicht geladen werden: ${error.message || 'Unbekannter Fehler'}`, 'error');
     } finally { $('refresh-button').disabled = false; }
   }
 
@@ -206,22 +379,31 @@
     const button = $('login-button'); button.disabled = true; button.textContent = 'Anmeldung läuft …';
     setStatus(loginStatus, '');
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: $('email').value.trim(), password: $('password').value
-      });
+      const { error } = await supabase.auth.signInWithPassword({ email: $('email').value.trim(), password: $('password').value });
       if (error) throw error;
       $('password').value = '';
       await showForCurrentSession();
     } catch (error) {
-      setStatus(loginStatus, `Anmeldung fehlgeschlagen: ${error.message}`,'error');
+      setStatus(loginStatus, `Anmeldung fehlgeschlagen: ${error.message}`, 'error');
     } finally { button.disabled = false; button.textContent = 'Anmelden'; }
   });
 
   $('refresh-button').addEventListener('click', refreshDashboard);
+  $('select-all-button').addEventListener('click', () => {
+    selectedIds = new Set(allRows.map(row => row.id));
+    renderRecordControls();
+    renderAnalysis();
+  });
+  $('select-none-button').addEventListener('click', () => {
+    selectedIds = new Set();
+    renderRecordControls();
+    renderAnalysis();
+  });
   $('logout-button').addEventListener('click', async () => {
     await supabase.auth.signOut();
+    selectedIds = null; knownIds = new Set();
     dashboard.classList.add('hidden'); loginPanel.classList.remove('hidden');
-    setStatus(loginStatus, 'Du wurdest abgemeldet.','success');
+    setStatus(loginStatus, 'Du wurdest abgemeldet.', 'success');
   });
   $('csv-button').addEventListener('click', () => {
     const headers = ['id','created_at',...FIELDS,'gesamtzahl'];
