@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Würfel-Experiment – Auswertung</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f3f6fb;font-synthesis:none}
+    *{box-sizing:border-box}body{margin:0;padding:28px 15px 48px}main{max-width:1050px;margin:auto}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+    .eyebrow{margin:0 0 5px;color:#63718a;font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+    h1{margin:0;font-size:clamp(1.7rem,4vw,2.3rem);letter-spacing:-.04em}.muted{color:#66758d}
+    .panel{background:#fff;border:1px solid #e2e8f0;border-radius:17px;padding:21px;box-shadow:0 8px 26px rgba(23,32,51,.045);margin-bottom:18px}
+    .login{max-width:440px;margin:7vh auto}.field{display:grid;gap:7px;margin:14px 0}label{font-weight:650;font-size:.92rem}
+    input{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:12px 13px;font:inherit;background:white;color:#172033}
+    input:focus{outline:3px solid rgba(47,111,235,.15);border-color:#2f6feb}
+    button{border:0;border-radius:10px;padding:11px 15px;background:#245edb;color:white;font:inherit;font-weight:700;cursor:pointer}
+    button.secondary{background:#eaf0f8;color:#263751}button:disabled{opacity:.6;cursor:wait}
+    #status{min-height:1.4em;line-height:1.4;margin:12px 0 0;font-size:.91rem}#status.error{color:#b42318}#status.success{color:#087443}
+    .hidden{display:none!important}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}
+    .metric{background:#fff;border:1px solid #e2e8f0;border-radius:15px;padding:17px}.metric .name{font-size:.86rem;color:#65748b}.metric strong{display:block;font-size:1.9rem;line-height:1.2;margin-top:6px;font-variant-numeric:tabular-nums}
+    .section-title{margin:0 0 5px;font-size:1.15rem}.section-sub{margin:0 0 16px;color:#68778d;font-size:.9rem}
+    .chart-wrap{position:relative;height:330px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:.9rem;white-space:nowrap}th,td{text-align:right;padding:10px 11px;border-bottom:1px solid #e9eef5;font-variant-numeric:tabular-nums}th:first-child,td:first-child{text-align:left}th{color:#53627a;font-weight:700;background:#f8fafd}
+    .actions{display:flex;gap:9px;flex-wrap:wrap}.small{font-size:.82rem}.tag{display:inline-block;background:#edf4ff;color:#2452a6;padding:4px 8px;border-radius:999px;font-size:.78rem;font-weight:700}
+    @media(max-width:700px){.cards{grid-template-columns:1fr}.panel{padding:16px}.chart-wrap{height:280px}}
+  </style>
+</head>
+<body>
+<main>
+  <section id="login-panel" class="panel login">
+    <p class="eyebrow">Lehrkraft · geschützter Bereich</p>
+    <h1>Würfel-Auswertung</h1>
+    <p class="muted">Bitte mit dem Lehrkraft-Konto anmelden.</p>
+    <form id="login-form">
+      <div class="field"><label for="email">E-Mail-Adresse</label><input id="email" type="email" autocomplete="username" required></div>
+      <div class="field"><label for="password">Passwort</label><input id="password" type="password" autocomplete="current-password" required></div>
+      <button id="login-button" type="submit" style="width:100%">Anmelden</button>
+      <p id="login-status" role="status"></p>
+    </form>
+  </section>
+
+  <section id="dashboard" class="hidden">
+    <header class="top">
+      <div><p class="eyebrow">Statistische Auswertung</p><h1>Würfel-Experiment</h1><span class="tag">Alle eingegangenen Messreihen</span></div>
+      <div class="actions"><button id="refresh-button" class="secondary">Aktualisieren</button><button id="csv-button" class="secondary">CSV exportieren</button><button id="logout-button" class="secondary">Abmelden</button></div>
+    </header>
+    <p id="dashboard-status" class="muted small" role="status">Daten werden geladen …</p>
+    <section class="cards">
+      <article class="metric"><span class="name">Eingegangene Messreihen</span><strong id="record-count">–</strong></article>
+      <article class="metric"><span class="name">Würfe insgesamt</span><strong id="roll-count">–</strong></article>
+      <article class="metric"><span class="name">Theoretische Häufigkeit je Augenzahl</span><strong>16,67 %</strong></article>
+    </section>
+    <section class="panel">
+      <h2 class="section-title">Relative Häufigkeiten</h2>
+      <p class="section-sub">Gesamtzahl jeder Augenzahl geteilt durch alle erfassten Würfe. Die Linie zeigt den theoretischen Wert eines fairen Würfels.</p>
+      <div class="chart-wrap"><canvas id="frequency-chart" aria-label="Diagramm der relativen Häufigkeiten" role="img"></canvas></div>
+    </section>
+    <section class="panel">
+      <h2 class="section-title">Zusammenfassung</h2>
+      <p class="section-sub">Die Häufigkeiten werden über alle Messreihen addiert (gewichtete Gesamtauswertung).</p>
+      <div class="table-wrap"><table><thead><tr><th>Augenzahl</th><th>Absolute Häufigkeit</th><th>Relative Häufigkeit</th></tr></thead><tbody id="summary-body"></tbody></table></div>
+    </section>
+    <section class="panel">
+      <h2 class="section-title">Letzte Messreihen</h2>
+      <p class="section-sub">Die neuesten 15 Datensätze. Vollständige Daten können über CSV exportiert werden.</p>
+      <div class="table-wrap"><table><thead><tr><th>Zeitpunkt</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>Würfe</th></tr></thead><tbody id="records-body"></tbody></table></div>
+    </section>
+  </section>
+</main>
+
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+  // Dieselben öffentlichen Projektangaben wie in wuerfel-eingabe.html eintragen.
+  const SUPABASE_URL = 'https://nzujsgiwllnbqameygxz.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Cep0GIwZnrJLNshnZzMwdA_lNtErFte';
+  const TABLE = 'wuerfel_messreihen';
+  const FIELDS = ['anzahl_1','anzahl_2','anzahl_3','anzahl_4','anzahl_5','anzahl_6'];
+  const PAGE_SIZE = 1000;
+
+  const $ = (id) => document.getElementById(id);
+  const loginPanel = $('login-panel');
+  const dashboard = $('dashboard');
+  const loginStatus = $('login-status');
+  const dashStatus = $('dashboard-status');
+  let supabase = null;
+  let chart = null;
+  let allRows = [];
+
+  const configured = !SUPABASE_URL.includes('DEIN-PROJEKT') && !SUPABASE_PUBLISHABLE_KEY.includes('DEIN_PUBLIC_KEY');
+  if (configured) {
+    supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: false }
+    });
+  } else {
+    loginStatus.textContent = 'Bitte zuerst Projekt-URL und Publishable Key im HTML-Code eintragen.';
+    loginStatus.className = 'error';
+    $('login-button').disabled = true;
+  }
+
+  function setStatus(element, text, kind='') { element.textContent = text; element.className = kind; }
+  function formatNumber(n) { return Number(n).toLocaleString('de-DE'); }
+  function formatPercent(n) { return `${(n * 100).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})} %`; }
+  function safeCsv(value) { return `"${String(value ?? '').replaceAll('"','""')}"`; }
+
+  async function loadAllRows() {
+    const result = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const to = from + PAGE_SIZE - 1;
+      const { data, error } = await supabase
+        .from(TABLE)
+        .select('id,created_at,anzahl_1,anzahl_2,anzahl_3,anzahl_4,anzahl_5,anzahl_6,gesamtzahl')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      if (error) throw error;
+      result.push(...(data || []));
+      if (!data || data.length < PAGE_SIZE) break;
+    }
+    return result;
+  }
+
+  function render(rows) {
+    allRows = rows;
+    const faceTotals = FIELDS.map(field => rows.reduce((sum, row) => sum + Number(row[field] || 0), 0));
+    const totalRolls = faceTotals.reduce((sum, value) => sum + value, 0);
+    $('record-count').textContent = formatNumber(rows.length);
+    $('roll-count').textContent = formatNumber(totalRolls);
+
+    const summaryBody = $('summary-body');
+    summaryBody.replaceChildren();
+    faceTotals.forEach((count, index) => {
+      const tr = document.createElement('tr');
+      const values = [String(index + 1), formatNumber(count), totalRolls ? formatPercent(count / totalRolls) : '–'];
+      values.forEach(value => { const td = document.createElement('td'); td.textContent = value; tr.appendChild(td); });
+      summaryBody.appendChild(tr);
+    });
+
+    const recordsBody = $('records-body');
+    recordsBody.replaceChildren();
+    rows.slice(0, 15).forEach(row => {
+      const tr = document.createElement('tr');
+      const date = new Date(row.created_at).toLocaleString('de-DE');
+      [date, ...FIELDS.map(field => formatNumber(row[field])), formatNumber(row.gesamtzahl)].forEach(value => {
+        const td = document.createElement('td'); td.textContent = value; tr.appendChild(td);
+      });
+      recordsBody.appendChild(tr);
+    });
+    if (rows.length === 0) {
+      const tr = document.createElement('tr'); const td = document.createElement('td');
+      td.colSpan = 8; td.textContent = 'Noch keine Messreihen vorhanden.'; tr.appendChild(td); recordsBody.appendChild(tr);
+    }
+
+    const observed = faceTotals.map(count => totalRolls ? count / totalRolls * 100 : 0);
+    if (chart) chart.destroy();
+    const canvas = $('frequency-chart');
+    if (typeof Chart !== 'undefined') {
+      chart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels: ['1','2','3','4','5','6'],
+          datasets: [
+            { label: 'Beobachtete relative Häufigkeit', data: observed, backgroundColor: '#3b82f6', borderRadius: 7 },
+            { label: 'Theoretischer Wert (fairer Würfel)', data: [100/6,100/6,100/6,100/6,100/6,100/6], type: 'line', borderColor: '#e28a36', backgroundColor: '#e28a36', pointRadius: 3, borderWidth: 2 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: { y: { beginAtZero: true, title: { display: true, text: 'Relative Häufigkeit (%)' }, ticks: { callback: value => `${value} %` } }, x: { title: { display: true, text: 'Augenzahl' } } },
+          plugins: { tooltip: { callbacks: { label: context => `${context.dataset.label}: ${context.parsed.y.toLocaleString('de-DE',{maximumFractionDigits:2})} %` } } }
+        }
+      });
+    } else {
+      setStatus(dashStatus, 'Die Daten sind geladen; das Diagramm konnte nicht geladen werden. Prüfe die Internetverbindung.', 'error');
+    }
+  }
+
+  async function refreshDashboard() {
+    setStatus(dashStatus, 'Daten werden geladen …');
+    $('refresh-button').disabled = true;
+    try {
+      const rows = await loadAllRows();
+      render(rows);
+      setStatus(dashStatus, `Zuletzt aktualisiert: ${new Date().toLocaleTimeString('de-DE')}`,'success');
+    } catch (error) {
+      console.error(error);
+      setStatus(dashStatus, `Daten konnten nicht geladen werden: ${error.message || 'Unbekannter Fehler'}`,'error');
+    } finally { $('refresh-button').disabled = false; }
+  }
+
+  async function showForCurrentSession() {
+    if (!supabase) return;
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user || user.is_anonymous) {
+      loginPanel.classList.remove('hidden'); dashboard.classList.add('hidden'); return;
+    }
+    loginPanel.classList.add('hidden'); dashboard.classList.remove('hidden');
+    await refreshDashboard();
+  }
+
+  $('login-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!supabase) return;
+    const button = $('login-button'); button.disabled = true; button.textContent = 'Anmeldung läuft …';
+    setStatus(loginStatus, '');
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: $('email').value.trim(), password: $('password').value
+      });
+      if (error) throw error;
+      $('password').value = '';
+      await showForCurrentSession();
+    } catch (error) {
+      setStatus(loginStatus, `Anmeldung fehlgeschlagen: ${error.message}`,'error');
+    } finally { button.disabled = false; button.textContent = 'Anmelden'; }
+  });
+
+  $('refresh-button').addEventListener('click', refreshDashboard);
+  $('logout-button').addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    dashboard.classList.add('hidden'); loginPanel.classList.remove('hidden');
+    setStatus(loginStatus, 'Du wurdest abgemeldet.','success');
+  });
+  $('csv-button').addEventListener('click', () => {
+    const headers = ['id','created_at',...FIELDS,'gesamtzahl'];
+    const lines = [headers.map(safeCsv).join(';'), ...allRows.map(row => headers.map(key => safeCsv(row[key])).join(';'))];
+    const blob = new Blob(['\ufeff' + lines.join('\r\n')], {type:'text/csv;charset=utf-8'});
+    const url = URL.createObjectURL(blob); const a = document.createElement('a');
+    a.href = url; a.download = `wuerfel-messreihen-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  });
+
+  if (supabase) await showForCurrentSession();
+</script>
+</body>
+</html>
